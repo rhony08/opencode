@@ -562,6 +562,7 @@ export function Logo(props: { shape?: LogoShape; ink?: RGBA; idle?: boolean } = 
   let box: BoxRenderable | undefined
   let timer: ReturnType<typeof setInterval> | undefined
   let hum = false
+  let starting = false
 
   const stop = () => {
     if (!timer) return
@@ -597,8 +598,12 @@ export function Logo(props: { shape?: LogoShape; ink?: RGBA; idle?: boolean } = 
   }
 
   const start = () => {
-    if (timer) return
+    if (timer || starting) return
+    starting = true
+    // Defensive cleanup: filter out old ring data before starting
+    setRings((list) => list.filter((item) => performance.now() - item.at < LIFE))
     timer = setInterval(tick, 16)
+    starting = false
   }
 
   onCleanup(() => {

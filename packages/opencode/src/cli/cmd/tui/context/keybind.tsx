@@ -1,4 +1,4 @@
-import { createMemo } from "solid-js"
+import { createMemo, onCleanup } from "solid-js"
 import { Keybind } from "@/util"
 import { pipe, mapValues } from "remeda"
 import type { TuiConfig } from "@/cli/cmd/tui/config/tui"
@@ -25,8 +25,14 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
     })
     const renderer = useRenderer()
 
-    let focus: Renderable | null
-    let timeout: NodeJS.Timeout
+    let focus: Renderable | null = null
+    let timeout: NodeJS.Timeout | undefined
+
+    onCleanup(() => {
+      if (timeout) clearTimeout(timeout)
+      focus = null
+    })
+
     function leader(active: boolean) {
       if (active) {
         setStore("leader", true)
@@ -36,16 +42,19 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
         timeout = setTimeout(() => {
           if (!store.leader) return
           leader(false)
-          if (!focus || focus.isDestroyed) return
-          focus.focus()
         }, 2000)
         return
       }
 
       if (!active) {
+        if (timeout) {
+          clearTimeout(timeout)
+          timeout = undefined
+        }
         if (focus && !renderer.currentFocusedRenderable) {
           focus.focus()
         }
+        focus = null
         setStore("leader", false)
       }
     }

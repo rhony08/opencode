@@ -25,27 +25,22 @@ export function Footer() {
   })
 
   onMount(() => {
-    // Track all timeouts to ensure proper cleanup
-    const timeouts: ReturnType<typeof setTimeout>[] = []
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
 
     function tick() {
-      if (connected()) return
-      if (!store.welcome) {
-        setStore("welcome", true)
-        timeouts.push(setTimeout(() => tick(), 5000))
+      if (connected()) {
+        timeoutId = undefined
         return
       }
-
-      if (store.welcome) {
-        setStore("welcome", false)
-        timeouts.push(setTimeout(() => tick(), 10_000))
-        return
-      }
+      const isWelcome = !store.welcome
+      setStore("welcome", isWelcome)
+      timeoutId = setTimeout(tick, isWelcome ? 5000 : 10_000)
     }
-    timeouts.push(setTimeout(() => tick(), 10_000))
+
+    timeoutId = setTimeout(tick, 10_000)
 
     onCleanup(() => {
-      timeouts.forEach(clearTimeout)
+      if (timeoutId) clearTimeout(timeoutId)
     })
   })
 

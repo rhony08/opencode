@@ -28,8 +28,10 @@ export function BgPulse(props: { centerX?: number; centerY?: number; masks?: BgP
   const [size, setSize] = createSignal<{ width: number; height: number }>({ width: 0, height: 0 })
   let box: BoxRenderable | undefined
 
-  const timer = setInterval(() => setNow(performance.now()), 50)
-  onCleanup(() => clearInterval(timer))
+  onMount(() => {
+    const timer = setInterval(() => setNow(performance.now()), 50)
+    onCleanup(() => clearInterval(timer))
+  })
 
   const sync = () => {
     if (!box) return

@@ -99,14 +99,18 @@ export function Autocomplete(props: {
 
   createEffect(() => {
     if (store.visible) {
-      let lastPos = { x: 0, y: 0, width: 0 }
+      let lastX = 0
+      let lastY = 0
+      let lastWidth = 0
       const interval = setInterval(() => {
         const anchor = props.anchor()
-        if (anchor.x !== lastPos.x || anchor.y !== lastPos.y || anchor.width !== lastPos.width) {
-          lastPos = { x: anchor.x, y: anchor.y, width: anchor.width }
+        if (anchor.x !== lastX || anchor.y !== lastY || anchor.width !== lastWidth) {
+          lastX = anchor.x
+          lastY = anchor.y
+          lastWidth = anchor.width
           setPositionTick((t) => t + 1)
         }
-      }, 50)
+      }, 100)
 
       onCleanup(() => clearInterval(interval))
     }
