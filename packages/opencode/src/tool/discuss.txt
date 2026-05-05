@@ -1,0 +1,155 @@
+Launch a multi-agent discussion where agents collaborate and communicate with each other inline (same session, not separate child sessions).
+
+This tool enables orchestrator-managed discussions where:
+- Agents see each other's outputs (peer-to-peer communication)
+- Orchestrator decides turn order dynamically
+- Agents can raise same topics AND different topics simultaneously (real discussion, not restricted to specific views)
+- Discussion continues until consensus reached or user input needed
+- After user input, discussion resumes seamlessly
+
+## When to Use
+
+Use this tool when you need multiple perspectives on a complex decision, architecture, or plan. Agents will discuss, respond to each other, and reach consensus or identify disagreements.
+
+## How It Works
+
+You (the orchestrator) control the discussion:
+
+1. **Start Phase**: Initialize discussion with topic and agents
+2. **Turn-by-Turn**: Decide which agent speaks next based on discussion progress
+3. **Analysis**: Run consensus analysis when needed
+4. **User Input**: If needed, ask user, then resume discussion
+5. **Finalize**: Get final transcript and summary
+
+## Parameters
+
+- `phase`: "start" (new discussion) or "continue" (resume/next turn)
+- `topic`: The discussion topic/question
+- `agents`: Array of participating agents with id, role (optional), and agent_type
+- `next_agent`: Which agent should speak next (YOU decide this)
+- `discussion_id`: Resume previous discussion (from start phase result)
+- `transcript`: Previous transcript (for continue phase)
+- `user_input`: User clarification to inject (after asking user)
+- `analyze`: Run consensus analysis (spawns analyzer subagent)
+- `add_agent`: Add new agent dynamically mid-discussion
+- `finalize`: End discussion and return final result
+
+## Usage Flow
+
+### Phase 1: Start Discussion
+```
+discuss({
+  phase: "start",
+  topic: "Ecommerce architecture",
+  agents: [
+    { id: "architect", agent_type: "general" },
+    { id: "security", agent_type: "general" },
+    { id: "scalability", agent_type: "explore" },
+  ],
+  next_agent: "architect", // You decide who starts
+})
+```
+Returns: `{ discussion_id, turn: { agent, output, note, round } }`
+
+### Phase 2: Continue Discussion
+After reading turn result, decide next agent:
+```
+discuss({
+  phase: "continue",
+  discussion_id: "...",
+  next_agent: "security", // You decide based on previous output
+  transcript: [...], // Pass previous transcript
+})
+```
+
+### Phase 3: Analyze Consensus
+When you want to check if discussion is converging:
+```
+discuss({
+  phase: "continue",
+  discussion_id: "...",
+  analyze: true,
+  transcript: [...],
+})
+```
+Returns: `{ analysis: { consensus, disagreements, needs_user_input, status, recommendation } }`
+
+### Phase 4: Handle User Input
+If analysis says "needs_user_input":
+- Use `question` tool to ask user
+- Get user's answer
+- Resume discussion:
+```
+discuss({
+  phase: "continue",
+  discussion_id: "...",
+  user_input: "User's answer here",
+  next_agent: "architect", // Continue with this agent
+  transcript: [...],
+})
+```
+
+### Phase 5: Finalize
+When consensus reached or you decide to end:
+```
+discuss({
+  phase: "continue",
+  discussion_id: "...",
+  finalize: true,
+  transcript: [...],
+})
+```
+Returns: `{ final: { transcript, summary, rounds, total_turns } }`
+
+## Important Notes
+
+1. **Agents are NOT restricted to roles**: They can raise any relevant topics, agree/disagree freely
+2. **Sequential awareness**: Agent C sees B's output, D sees C and B's, etc.
+3. **You control turn order**: Decide based on discussion progress, not fixed sequence
+4. **No max rounds**: Discussion runs until naturally complete
+5. **Analyzer is separate**: Uses Task tool for analysis, discussion agents stay inline
+6. **Full transcript**: Each agent sees all previous discussion history
+7. **Dynamic agents**: Add new agents mid-discussion if needed
+
+## Example
+
+```
+User: "Plan ecommerce architecture"
+
+Orchestrator:
+  discuss({ phase: "start", topic: "Ecommerce architecture", 
+           agents: [...], next_agent: "architect" })
+
+[architect]: "I propose: catalog, checkout, auth..."
+
+Orchestrator reads output, decides:
+  discuss({ phase: "continue", next_agent: "security", transcript: [...] })
+
+[security]: "Architect's proposal is good. Security concerns: auth flow..."
+
+Orchestrator reads, decides:
+  discuss({ phase: "continue", next_agent: "scalability", transcript: [...] })
+
+[scalability]: "I agree with security on auth. Also consider caching..."
+
+Orchestrator: "Let's analyze"
+  discuss({ phase: "continue", analyze: true, transcript: [...] })
+
+Analysis: { consensus: [...], disagreements: [], needs_user_input: ["deployment target"], status: "needs_user_input" }
+
+Orchestrator: question tool → user answers "AWS"
+  discuss({ phase: "continue", user_input: "AWS deployment", next_agent: "architect", transcript: [...] })
+
+[Discussion continues...]
+
+Orchestrator: discuss({ phase: "continue", finalize: true, transcript: [...] })
+
+Final: { transcript: [...], summary: { consensus: [...], recommendations: [...] } }
+
+Orchestrator: Synthesize final plan
+```
+
+## Key Difference from Task Tool
+
+- **Task tool**: Agents isolated in child sessions, don't see each other, parallel execution
+- **Discuss tool**: Agents inline, see full history, sequential turns, peer communication
